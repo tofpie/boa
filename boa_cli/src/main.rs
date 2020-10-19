@@ -31,9 +31,6 @@ use rustyline::{config::Config, error::ReadlineError, EditMode, Editor};
 use std::{fs::read_to_string, path::PathBuf};
 use structopt::{clap::arg_enum, StructOpt};
 
-#[cfg(feature = "vm")]
-use boa::vm::VM;
-
 mod helper;
 
 #[cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))]
