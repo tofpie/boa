@@ -1,9 +1,6 @@
 use crate::{
     exec::Executable,
     syntax::ast::{node::Node, op},
-    vm::compilation::CodeGen,
-    vm::Compiler,
-    vm::Instruction,
     Context, Result, Value,
 };
 use gc::{Finalize, Trace};
@@ -11,6 +8,9 @@ use std::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "vm")]
+use crate::vm::{compilation::CodeGen, Compiler, Instruction};
 
 /// A unary operation is an operation with only one operand.
 ///
@@ -129,6 +129,7 @@ impl From<UnaryOp> for Node {
     }
 }
 
+#[cfg(feature = "vm")]
 impl CodeGen for UnaryOp {
     fn compile(&self, compiler: &mut Compiler) {
         self.target().compile(compiler);
