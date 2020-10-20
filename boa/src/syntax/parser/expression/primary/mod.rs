@@ -104,8 +104,8 @@ where
             TokenKind::NullLiteral => Ok(Const::Null.into()),
             TokenKind::Identifier(ident) => Ok(Identifier::new(ident).into()), // TODO: IdentifierReference
             TokenKind::StringLiteral(s) => Ok(Const::String(s).into()),
-            TokenKind::NumericLiteral(Numeric::Integer(num)) => Ok(Const::from(*num).into()),
-            TokenKind::NumericLiteral(Numeric::Rational(num)) => Ok(Const::from(*num).into()),
+            TokenKind::NumericLiteral(Numeric::Integer(num)) => Ok(Const::from(num).into()),
+            TokenKind::NumericLiteral(Numeric::Rational(num)) => Ok(Const::from(num).into()),
             TokenKind::NumericLiteral(Numeric::BigInt(num)) => Ok(Const::from(num.clone()).into()),
             TokenKind::RegularExpressionLiteral(body, flags) => {
                 Ok(Node::from(New::from(Call::new(

@@ -32,24 +32,19 @@ pub struct Identifier {
 
 impl Identifier {
     /// Creates a new `Identifier` AST node.
-    fn new(ident: Sym) -> Self {
+    pub(in crate::syntax) fn new(ident: Sym) -> Self {
         Self { ident }
     }
 
-    /// Creates a structure that can be used to display an `Identifier` AST node.
-    pub fn display<'d>(&self, interner: &'d Interner) -> IdentifierDisplay<'d> {
-        IdentifierDisplay {
-            ident: self.ident,
-            interner,
-        }
+    /// Retrieves the identifier as an interner symbol.
+    pub fn sym(&self) -> Sym {
+        self.ident
     }
-}
 
-/// Structure to display an `Identifier` AST node.
-#[derive(Debug)]
-struct IdentifierDisplay<'i> {
-    ident: Sym,
-    interner: &'i Interner,
+    /// Implements display formatting.
+    pub fn display(&self, f: &mut fmt::Formatter<'_>, interner: &Interner) -> fmt::Result {
+        f.write_str(interner.resolve(self.ident).expect("string disappeared"))
+    }
 }
 
 impl Executable for Identifier {
@@ -58,13 +53,11 @@ impl Executable for Identifier {
             .realm()
             .environment
             .get_binding_value(interpreter.resolve(self.ident).expect("string disappeared"))
-            .ok_or_else(|| interpreter.construct_reference_error(self.as_ref()))
-    }
-}
-
-impl fmt::Display for IdentifierDisplay {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(interner.resolve(self.ident).expect("string disappeared"), f)
+            .ok_or_else(|| {
+                interpreter.construct_reference_error(
+                    interpreter.resolve(self.ident).expect("string disappeared"),
+                )
+            })
     }
 }
 

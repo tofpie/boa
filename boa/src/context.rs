@@ -23,7 +23,7 @@ use crate::{
         Parser,
     },
     value::{RcString, RcSymbol, Value},
-    BoaProfiler, Executable, Result, Sym,
+    BoaProfiler, Executable, Interner, Result, Sym,
 };
 use std::result::Result as StdResult;
 
@@ -196,6 +196,9 @@ pub struct Context {
 
     /// Cached standard objects and their prototypes
     standard_objects: StandardObjects,
+
+    /// String interner.
+    interner: Interner,
 }
 
 impl Default for Context {
@@ -212,6 +215,7 @@ impl Default for Context {
             well_known_symbols,
             iterator_prototypes: IteratorPrototypes::default(),
             standard_objects: Default::default(),
+            interner: Interner::new(),
         };
 
         // Add new builtIns to Context Realm
@@ -224,25 +228,32 @@ impl Default for Context {
 }
 
 impl Context {
-    /// Create a new `Context`.
-    pub fn new() -> Self {
-        Default::default()
+    /// Create a new `Context` with the given string interenr.
+    pub fn new(interner: Interner) -> Self {
+        Self {
+            interner,
+            ..Self::default()
+        }
     }
 
+    /// Retrieves the realm.
     pub fn realm(&self) -> &Realm {
         &self.realm
     }
 
+    /// Retrieves a mutable reference to the realm.
     pub fn realm_mut(&mut self) -> &mut Realm {
         &mut self.realm
     }
 
+    /// Retrieves the reference to the interpreter.
     pub fn executor(&mut self) -> &mut Interpreter {
         &mut self.executor
     }
 
+    /// Resolves a symbol to the given string, if it has already been interned.
     pub(crate) fn resolve(&self, symbol: Sym) -> Option<&str> {
-        todo!("implement symbol resolution");
+        self.interner.resolve(symbol)
     }
 
     /// A helper function for getting an immutable reference to the `console` object.
@@ -634,7 +645,7 @@ impl Context {
     pub fn eval(&mut self, src: &str) -> Result<Value> {
         let main_timer = BoaProfiler::global().start_event("Main", "Main");
 
-        let parsing_result = Parser::new(src.as_bytes(), false)
+        let parsing_result = Parser::new(src.as_bytes(), false, &self.interner)
             .parse_all()
             .map_err(|e| e.to_string());
 

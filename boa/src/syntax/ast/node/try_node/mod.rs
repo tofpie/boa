@@ -2,7 +2,7 @@ use crate::{
     environment::lexical_environment::{new_declarative_environment, VariableScope},
     exec::Executable,
     syntax::ast::node::{Block, Identifier, Node},
-    BoaProfiler, Context, Result, Value,
+    BoaProfiler, Context, Result, Sym, Value,
 };
 use gc::{Finalize, Trace};
 use std::fmt;
@@ -76,12 +76,13 @@ impl Try {
         &self,
         f: &mut fmt::Formatter<'_>,
         indentation: usize,
+        interner: &Interner,
     ) -> fmt::Result {
         write!(f, "{}try ", "    ".repeat(indentation))?;
         self.block.display(f, indentation)?;
 
         if let Some(ref catch) = self.catch {
-            catch.display(f, indentation)?;
+            catch.display(f, indentation, interner)?;
         }
 
         if let Some(ref finally) = self.finally {
@@ -135,12 +136,6 @@ impl Executable for Try {
     }
 }
 
-impl fmt::Display for Try {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.display(f, 0)
-    }
-}
-
 impl From<Try> for Node {
     fn from(try_catch: Try) -> Self {
         Self::Try(try_catch)
@@ -170,8 +165,8 @@ impl Catch {
     }
 
     /// Gets the parameter of the catch block.
-    pub fn parameter(&self) -> Option<&str> {
-        self.parameter.as_ref().map(Identifier::as_ref)
+    pub fn parameter(&self) -> Option<Sym> {
+        self.parameter.as_ref().map(Identifier::sym)
     }
 
     /// Retrieves the catch execution block.
@@ -180,19 +175,22 @@ impl Catch {
     }
 
     /// Implements the display formatting with indentation.
-    pub(super) fn display(&self, f: &mut fmt::Formatter<'_>, indentation: usize) -> fmt::Result {
+    pub(super) fn display(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        indentation: usize,
+        interner: &Interner,
+    ) -> fmt::Result {
         f.write_str(" catch")?;
         if let Some(ref param) = self.parameter {
-            write!(f, "({})", param)?;
+            write!(
+                f,
+                "({})",
+                interner.resolve(param).expect("string disappeared")
+            )?;
         }
         f.write_str(" ")?;
         self.block.display(f, indentation)
-    }
-}
-
-impl fmt::Display for Catch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.display(f, 0)
     }
 }
 
