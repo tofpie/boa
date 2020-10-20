@@ -59,7 +59,7 @@ where
 {
     type Output = Switch;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("SwitchStatement", "Parsing");
         cursor.expect(Keyword::Switch, "switch statement")?;
         cursor.expect(Punctuator::OpenParen, "switch statement")?;
@@ -110,7 +110,7 @@ where
 {
     type Output = (Box<[node::Case]>, Option<node::StatementList>);
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         cursor.expect(Punctuator::OpenBlock, "switch case block")?;
 
         let mut cases = Vec::new();

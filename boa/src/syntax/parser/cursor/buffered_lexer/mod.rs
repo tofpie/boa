@@ -24,19 +24,19 @@ const MAX_PEEK_SKIP: usize = 2;
 const PEEK_BUF_SIZE: usize = (MAX_PEEK_SKIP + 1) * 2;
 
 #[derive(Debug)]
-pub(super) struct BufferedLexer<R> {
-    lexer: Lexer<R>,
+pub(super) struct BufferedLexer<'b, R> {
+    lexer: Lexer<'b, R>,
     peeked: [Option<Token>; PEEK_BUF_SIZE],
     read_index: usize,
     write_index: usize,
 }
 
-impl<R> From<Lexer<R>> for BufferedLexer<R>
+impl<'b, R> From<Lexer<'b, R>> for BufferedLexer<'b, R>
 where
     R: Read,
 {
     #[inline]
-    fn from(lexer: Lexer<R>) -> Self {
+    fn from(lexer: Lexer<'b, R>) -> Self {
         Self {
             lexer,
             peeked: [
@@ -53,17 +53,7 @@ where
     }
 }
 
-impl<R> From<R> for BufferedLexer<R>
-where
-    R: Read,
-{
-    #[inline]
-    fn from(reader: R) -> Self {
-        Lexer::new(reader).into()
-    }
-}
-
-impl<R> BufferedLexer<R>
+impl<'b, R> BufferedLexer<'b, R>
 where
     R: Read,
 {

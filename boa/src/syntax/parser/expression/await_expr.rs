@@ -47,7 +47,7 @@ where
 {
     type Output = AwaitExpr;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         cursor.expect(
             TokenKind::Keyword(Keyword::Await),
             "Await expression parsing",

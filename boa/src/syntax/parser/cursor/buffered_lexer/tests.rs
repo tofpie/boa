@@ -1,195 +1,202 @@
 use super::BufferedLexer;
-use crate::syntax::lexer::{Token, TokenKind};
+use crate::{
+    syntax::lexer::{Lexer, Token, TokenKind},
+    Interner,
+};
 
 #[test]
 fn peek_skip_accending() {
-    let mut cur = BufferedLexer::from(&b"a b c d e f g h i"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"a b c d e f g h i"[..], &interner));
 
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("b")
+        TokenKind::identifier("b", &mut interner)
     );
     assert_eq!(
         *cur.peek(2, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.peek(2, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("b")
+        TokenKind::identifier("b", &mut interner)
     );
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
 }
 
 #[test]
 fn peek_skip_next() {
-    let mut cur = BufferedLexer::from(&b"a b c d e f g h i"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"a b c d e f g h i"[..], &interner));
 
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("b")
+        TokenKind::identifier("b", &mut interner)
     );
     assert_eq!(
         *cur.peek(2, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("b")
+        TokenKind::identifier("b", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("d")
+        TokenKind::identifier("d", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("e")
+        TokenKind::identifier("e", &mut interner)
     );
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("f")
+        TokenKind::identifier("f", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("g")
+        TokenKind::identifier("g", &mut interner)
     );
     assert_eq!(
         *cur.peek(2, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("h")
+        TokenKind::identifier("h", &mut interner)
     );
 }
 
 #[test]
 fn peek_skip_next_alternating() {
-    let mut cur = BufferedLexer::from(&b"a b c d e f g h i"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"a b c d e f g h i"[..], &interner));
 
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("a")
+        TokenKind::identifier("a", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("b")
+        TokenKind::identifier("b", &mut interner)
     );
     assert_eq!(
         *cur.peek(1, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("d")
+        TokenKind::identifier("d", &mut interner)
     );
     assert_eq!(
         *cur.next(false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("c")
+        TokenKind::identifier("c", &mut interner)
     );
     assert_eq!(
         *cur.peek(2, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("f")
+        TokenKind::identifier("f", &mut interner)
     );
 }
 
 #[test]
 fn peek_next_till_end() {
-    let mut cur = BufferedLexer::from(&b"a b c d e f g h i"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"a b c d e f g h i"[..], &interner));
 
     loop {
         let peek = cur.peek(0, false).unwrap().cloned();
@@ -205,7 +212,8 @@ fn peek_next_till_end() {
 
 #[test]
 fn peek_skip_next_till_end() {
-    let mut cur = BufferedLexer::from(&b"a b c d e f g h i"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"a b c d e f g h i"[..], &interner));
 
     let mut peeked: [Option<Token>; super::MAX_PEEK_SKIP + 1] =
         [None::<Token>, None::<Token>, None::<Token>];
@@ -227,20 +235,21 @@ fn peek_skip_next_till_end() {
 
 #[test]
 fn skip_peeked_terminators() {
-    let mut cur = BufferedLexer::from(&b"A \n B"[..]);
+    let mut interner = Interner::new();
+    let mut cur = BufferedLexer::from(Lexer::new(&b"A \n B"[..], &interner));
     assert_eq!(
         *cur.peek(0, false)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("A")
+        TokenKind::identifier("A", &mut interner)
     );
     assert_eq!(
         *cur.peek(0, true)
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("A")
+        TokenKind::identifier("A", &mut interner)
     );
 
     assert_eq!(
@@ -255,7 +264,7 @@ fn skip_peeked_terminators() {
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("B") // This value is after the line terminator
+        TokenKind::identifier("B", &mut interner) // This value is after the line terminator
     );
 
     assert_eq!(
@@ -263,7 +272,7 @@ fn skip_peeked_terminators() {
             .unwrap()
             .expect("Some value expected")
             .kind(),
-        TokenKind::identifier("B")
+        TokenKind::identifier("B", &mut interner)
     );
     // End of stream
     assert!(cur.peek(2, true).unwrap().is_none());

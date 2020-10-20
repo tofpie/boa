@@ -1,17 +1,18 @@
 //! Module implementing the lexer cursor. This is used for managing the input byte stream.
 
-use crate::{profiler::BoaProfiler, syntax::ast::Position};
+use crate::{profiler::BoaProfiler, syntax::ast::Position, Interner, Sym};
 use std::io::{self, Bytes, Error, ErrorKind, Read};
 
 /// Cursor over the source code.
 #[derive(Debug)]
-pub(super) struct Cursor<R> {
+pub(super) struct Cursor<'i, R> {
     iter: InnerIter<R>,
     pos: Position,
     strict_mode: bool,
+    interner: &'i Interner,
 }
 
-impl<R> Cursor<R> {
+impl<'i, R> Cursor<'i, R> {
     /// Gets the current position of the cursor in the source code.
     #[inline]
     pub(super) fn pos(&self) -> Position {
@@ -32,28 +33,39 @@ impl<R> Cursor<R> {
         self.pos = Position::new(next_line, 1);
     }
 
+    /// Gets the strict mode of the cursor.
     #[inline]
     pub(super) fn strict_mode(&self) -> bool {
         self.strict_mode
     }
 
+    /// Sets the strict mode of the cursor.
     #[inline]
     pub(super) fn set_strict_mode(&mut self, strict_mode: bool) {
         self.strict_mode = strict_mode
     }
+
+    /// Gets the interner symbol for the given string, and interns it if needed.
+    pub(super) fn get_interner_sym<S>(&mut self, string: S) -> Sym
+    where
+        S: AsRef<str>,
+    {
+        self.interner.get_or_intern(string)
+    }
 }
 
-impl<R> Cursor<R>
+impl<'i, R> Cursor<'i, R>
 where
     R: Read,
 {
     /// Creates a new Lexer cursor.
     #[inline]
-    pub(super) fn new(inner: R) -> Self {
+    pub(super) fn new(inner: R, interner: &'i Interner) -> Self {
         Self {
             iter: InnerIter::new(inner.bytes()),
             pos: Position::new(1, 1),
             strict_mode: false,
+            interner,
         }
     }
 

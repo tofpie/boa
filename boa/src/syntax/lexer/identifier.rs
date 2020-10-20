@@ -45,7 +45,7 @@ impl Identifier {
 }
 
 impl<R> Tokenizer<R> for Identifier {
-    fn lex(&mut self, cursor: &mut Cursor<R>, start_pos: Position) -> Result<Token, Error>
+    fn lex(&mut self, cursor: &mut Cursor<'_, R>, start_pos: Position) -> Result<Token, Error>
     where
         R: Read,
     {
@@ -81,7 +81,7 @@ impl<R> Tokenizer<R> for Identifier {
                             start_pos,
                         ));
                     }
-                    TokenKind::identifier(slice)
+                    TokenKind::Identifier(cursor.get_interner_sym(slice))
                 }
             }
         };

@@ -33,7 +33,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub(super) struct RegexLiteral;
 
 impl<R> Tokenizer<R> for RegexLiteral {
-    fn lex(&mut self, cursor: &mut Cursor<R>, start_pos: Position) -> Result<Token, Error>
+    fn lex(&mut self, cursor: &mut Cursor<'_, R>, start_pos: Position) -> Result<Token, Error>
     where
         R: Read,
     {
@@ -94,7 +94,10 @@ impl<R> Tokenizer<R> for RegexLiteral {
         cursor.take_while_pred(&mut flags, &char::is_alphabetic)?;
 
         Ok(Token::new(
-            TokenKind::regular_expression_literal(body, parse_regex_flags(&flags, flags_start)?),
+            TokenKind::RegularExpressionLiteral(
+                cursor.get_interner_sym(body),
+                parse_regex_flags(&flags, flags_start)?,
+            ),
             Span::new(start_pos, cursor.pos()),
         ))
     }

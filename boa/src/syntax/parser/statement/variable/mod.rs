@@ -54,7 +54,7 @@ where
 {
     type Output = VarDeclList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("VariableStatement", "Parsing");
         cursor.expect(Keyword::Var, "variable statement")?;
 
@@ -108,7 +108,7 @@ where
 {
     type Output = VarDeclList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let mut list = Vec::new();
 
         loop {
@@ -166,7 +166,7 @@ where
 {
     type Output = VarDecl;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         // TODO: BindingPattern
 
         let name = BindingIdentifier::new(self.allow_yield, self.allow_await).parse(cursor)?;

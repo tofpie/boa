@@ -68,12 +68,12 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("PrimaryExpression", "Parsing");
 
         let tok = cursor.next()?.ok_or(ParseError::AbruptEnd)?;
 
-        match tok.kind() {
+        match *tok.kind() {
             TokenKind::Keyword(Keyword::This) => Ok(Node::This),
             TokenKind::Keyword(Keyword::Function) => {
                 FunctionExpression.parse(cursor).map(Node::from)
@@ -100,10 +100,10 @@ where
                     .parse(cursor)?
                     .into())
             }
-            TokenKind::BooleanLiteral(boolean) => Ok(Const::from(*boolean).into()),
+            TokenKind::BooleanLiteral(boolean) => Ok(Const::from(boolean).into()),
             TokenKind::NullLiteral => Ok(Const::Null.into()),
-            TokenKind::Identifier(ident) => Ok(Identifier::from(ident.as_ref()).into()), // TODO: IdentifierReference
-            TokenKind::StringLiteral(s) => Ok(Const::from(s.as_ref()).into()),
+            TokenKind::Identifier(ident) => Ok(Identifier::new(ident).into()), // TODO: IdentifierReference
+            TokenKind::StringLiteral(s) => Ok(Const::String(s).into()),
             TokenKind::NumericLiteral(Numeric::Integer(num)) => Ok(Const::from(*num).into()),
             TokenKind::NumericLiteral(Numeric::Rational(num)) => Ok(Const::from(*num).into()),
             TokenKind::NumericLiteral(Numeric::BigInt(num)) => Ok(Const::from(num.clone()).into()),

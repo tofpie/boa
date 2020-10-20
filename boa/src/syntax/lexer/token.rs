@@ -10,6 +10,7 @@ use super::regex::RegExpFlags;
 use crate::{
     builtins::BigInt,
     syntax::ast::{Keyword, Punctuator, Span},
+    Interner, Sym,
 };
 
 use std::fmt::{self, Debug, Display, Formatter};
@@ -50,11 +51,26 @@ impl Token {
     pub fn span(&self) -> Span {
         self.span
     }
+
+    /// Retrieves a structure ready for display.
+    pub fn display<'d>(&self, interner: &'d Interner) -> TokenDisplay<'_, 'd> {
+        TokenDisplay {
+            token: &self,
+            interner,
+        }
+    }
 }
 
-impl Display for Token {
+/// Structure to allow displaying of tokens.
+#[derive(Debug)]
+pub struct TokenDisplay<'k, 'i> {
+    token: &'k Token,
+    interner: &'i Interner,
+}
+
+impl<'k, 'i> Display for TokenDisplay<'k, 'i> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
+        fmt::Display::fmt(&self.token.display(self.interner), f)
     }
 }
 
@@ -104,7 +120,7 @@ pub enum TokenKind {
     EOF,
 
     /// An identifier.
-    Identifier(Box<str>),
+    Identifier(Sym),
 
     /// A keyword.
     ///
@@ -123,12 +139,13 @@ pub enum TokenKind {
     Punctuator(Punctuator),
 
     /// A string literal.
-    StringLiteral(Box<str>),
+    StringLiteral(Sym),
 
-    TemplateLiteral(Box<str>),
+    /// A string template literal.
+    TemplateLiteral(Sym),
 
     /// A regular expression, consisting of body and flags.
-    RegularExpressionLiteral(Box<str>, RegExpFlags),
+    RegularExpressionLiteral(Sym, RegExpFlags),
 
     /// Indicates the end of a line (`\n`).
     LineTerminator,
@@ -173,11 +190,11 @@ impl TokenKind {
     }
 
     /// Creates an `Identifier` token type.
-    pub fn identifier<I>(ident: I) -> Self
+    pub fn identifier<I>(ident: I, interner: &mut Interner) -> Self
     where
-        I: Into<Box<str>>,
+        I: AsRef<str>,
     {
-        Self::Identifier(ident.into())
+        Self::Identifier(interner.get_or_intern(ident))
     }
 
     /// Creates a `Keyword` token kind.
@@ -199,28 +216,28 @@ impl TokenKind {
     }
 
     /// Creates a `StringLiteral` token type.
-    pub fn string_literal<S>(lit: S) -> Self
+    pub fn string_literal<S>(lit: S, interner: &mut Interner) -> Self
     where
-        S: Into<Box<str>>,
+        S: AsRef<str>,
     {
-        Self::StringLiteral(lit.into())
+        Self::StringLiteral(interner.get_or_intern(lit))
     }
 
     /// Creates a `TemplateLiteral` token type.
-    pub fn template_literal<S>(lit: S) -> Self
+    pub fn template_literal<S>(lit: S, interner: &mut Interner) -> Self
     where
-        S: Into<Box<str>>,
+        S: AsRef<str>,
     {
-        Self::TemplateLiteral(lit.into())
+        Self::TemplateLiteral(interner.get_or_intern(lit))
     }
 
     /// Creates a `RegularExpressionLiteral` token kind.
-    pub fn regular_expression_literal<B, R>(body: B, flags: R) -> Self
+    pub fn regular_expression_literal<B, R>(body: B, flags: R, interner: &mut Interner) -> Self
     where
-        B: Into<Box<str>>,
+        B: AsRef<str>,
         R: Into<RegExpFlags>,
     {
-        Self::RegularExpressionLiteral(body.into(), flags.into())
+        Self::RegularExpressionLiteral(interner.get_or_intern(body), flags.into())
     }
 
     /// Creates a `LineTerminator` token kind.
@@ -232,25 +249,57 @@ impl TokenKind {
     pub fn comment() -> Self {
         Self::Comment
     }
+
+    /// Creates a display object for this token kind.
+    pub fn display<'d>(&self, interner: &'d Interner) -> TokenKindDisplay<'_, 'd> {
+        TokenKindDisplay {
+            kind: &self,
+            interner,
+        }
+    }
 }
 
-impl Display for TokenKind {
+/// Structure that allows displaying a token kind.
+#[derive(Debug)]
+pub struct TokenKindDisplay<'k, 'i> {
+    kind: &'k TokenKind,
+    interner: &'i Interner,
+}
+
+impl<'k, 'i> Display for TokenKindDisplay<'k, 'i> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match *self {
-            Self::BooleanLiteral(ref val) => write!(f, "{}", val),
-            Self::EOF => write!(f, "end of file"),
-            Self::Identifier(ref ident) => write!(f, "{}", ident),
-            Self::Keyword(ref word) => write!(f, "{}", word),
-            Self::NullLiteral => write!(f, "null"),
-            Self::NumericLiteral(Numeric::Rational(num)) => write!(f, "{}", num),
-            Self::NumericLiteral(Numeric::Integer(num)) => write!(f, "{}", num),
-            Self::NumericLiteral(Numeric::BigInt(ref num)) => write!(f, "{}n", num),
-            Self::Punctuator(ref punc) => write!(f, "{}", punc),
-            Self::StringLiteral(ref lit) => write!(f, "{}", lit),
-            Self::TemplateLiteral(ref lit) => write!(f, "{}", lit),
-            Self::RegularExpressionLiteral(ref body, ref flags) => write!(f, "/{}/{}", body, flags),
-            Self::LineTerminator => write!(f, "line terminator"),
-            Self::Comment => write!(f, "comment"),
+        match *self.kind {
+            TokenKind::BooleanLiteral(ref val) => write!(f, "{}", val),
+            TokenKind::EOF => write!(f, "end of file"),
+            TokenKind::Identifier(ident) => write!(
+                f,
+                "{}",
+                self.interner.resolve(ident).expect("string disappeared")
+            ),
+            TokenKind::Keyword(ref word) => write!(f, "{}", word),
+            TokenKind::NullLiteral => write!(f, "null"),
+            TokenKind::NumericLiteral(Numeric::Rational(num)) => write!(f, "{}", num),
+            TokenKind::NumericLiteral(Numeric::Integer(num)) => write!(f, "{}", num),
+            TokenKind::NumericLiteral(Numeric::BigInt(ref num)) => write!(f, "{}n", num),
+            TokenKind::Punctuator(ref punc) => write!(f, "{}", punc),
+            TokenKind::StringLiteral(lit) => write!(
+                f,
+                "{}",
+                self.interner.resolve(lit).expect("string disappeared")
+            ),
+            TokenKind::TemplateLiteral(lit) => write!(
+                f,
+                "{}",
+                self.interner.resolve(lit).expect("string disappeared")
+            ),
+            TokenKind::RegularExpressionLiteral(body, flags) => write!(
+                f,
+                "/{}/{}",
+                self.interner.resolve(body).expect("string disappeared"),
+                flags
+            ),
+            TokenKind::LineTerminator => write!(f, "line terminator"),
+            TokenKind::Comment => write!(f, "comment"),
         }
     }
 }

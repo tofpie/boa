@@ -68,7 +68,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("LexicalDeclaration", "Parsing");
         let tok = cursor.next()?.ok_or(ParseError::AbruptEnd)?;
 
@@ -142,7 +142,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("BindingList", "Parsing");
 
         // Create vectors to store the variable declarations
@@ -242,7 +242,7 @@ where
 {
     type Output = (Box<str>, Option<Node>);
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("LexicalBinding", "Parsing");
 
         let ident = BindingIdentifier::new(self.allow_yield, self.allow_await).parse(cursor)?;

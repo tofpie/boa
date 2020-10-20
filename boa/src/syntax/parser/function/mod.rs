@@ -61,7 +61,7 @@ where
 {
     type Output = Box<[node::FormalParameter]>;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("FormalParameters", "Parsing");
         cursor.set_goal(InputElement::RegExp);
 
@@ -150,7 +150,7 @@ where
 {
     type Output = node::FormalParameter;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("BindingRestElement", "Parsing");
         cursor.expect(Punctuator::Spread, "rest parameter")?;
 
@@ -195,7 +195,7 @@ where
 {
     type Output = node::FormalParameter;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("FormalParameter", "Parsing");
 
         // TODO: BindingPattern
@@ -257,7 +257,7 @@ where
 {
     type Output = node::StatementList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("FunctionStatementList", "Parsing");
 
         let global_strict_mode = cursor.strict_mode();

@@ -23,7 +23,7 @@ use crate::{
         Parser,
     },
     value::{RcString, RcSymbol, Value},
-    BoaProfiler, Executable, Result,
+    BoaProfiler, Executable, Result, Sym,
 };
 use std::result::Result as StdResult;
 
@@ -239,6 +239,10 @@ impl Context {
 
     pub fn executor(&mut self) -> &mut Interpreter {
         &mut self.executor
+    }
+
+    pub(crate) fn resolve(&self, symbol: Sym) -> Option<&str> {
+        todo!("implement symbol resolution");
     }
 
     /// A helper function for getting an immutable reference to the `console` object.

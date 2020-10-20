@@ -56,30 +56,67 @@ pub mod value;
 
 pub mod context;
 
-use std::result::Result as StdResult;
-
-pub(crate) use crate::{exec::Executable, profiler::BoaProfiler};
+pub(crate) use crate::{
+    exec::Executable,
+    gc::{empty_trace, Finalize, Trace},
+    profiler::BoaProfiler,
+};
+use rustc_hash::FxHasher;
+use std::{hash::BuildHasherDefault, num::NonZeroUsize, result::Result as StdResult};
+use string_interner::{backend::BucketBackend, StringInterner, Symbol};
 
 // Export things to root level
-#[doc(inline)]
-pub use crate::{context::Context, value::Value};
-
 use crate::syntax::{
     ast::node::StatementList,
     parser::{ParseError, Parser},
 };
+#[doc(inline)]
+pub use crate::{context::Context, value::Value};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// The result of a Javascript expression is represented like this so it can succeed (`Ok`) or fail (`Err`)
 #[must_use]
 pub type Result<T> = StdResult<T, Value>;
+
+/// Type used as a symbol for the string interner.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Finalize)]
+struct Sym {
+    val: NonZeroUsize,
+}
+
+impl Symbol for Sym {
+    fn try_from_usize(val: usize) -> Option<Self> {
+        Some(Self {
+            val: NonZeroUsize::new(val + 1)?,
+        })
+    }
+
+    fn to_usize(self) -> usize {
+        self.val.get() - 1
+    }
+}
+
+// TODO: waiting for <https://github.com/Manishearth/rust-gc/issues/87> to remove unsafe code.
+unsafe impl Trace for Sym {
+    empty_trace!();
+}
+
+/// Type used as a string interner.
+pub type Interner = StringInterner<Sym, BucketBackend<Sym>, BuildHasherDefault<FxHasher>>;
 
 /// Parses the given source code.
 ///
 /// It will return either the statement list AST node for the code, or a parsing error if something
 /// goes wrong.
 #[inline]
-pub fn parse(src: &str, strict_mode: bool) -> StdResult<StatementList, ParseError> {
-    Parser::new(src.as_bytes(), strict_mode).parse_all()
+pub fn parse(
+    src: &str,
+    strict_mode: bool,
+    interner: Option<&Interner>,
+) -> StdResult<StatementList, ParseError> {
+    Parser::new(src.as_bytes(), strict_mode, interner).parse_all()
 }
 
 /// Execute the code using an existing Context

@@ -49,7 +49,7 @@ enum StringTerminator {
 }
 
 impl<R> Tokenizer<R> for StringLiteral {
-    fn lex(&mut self, cursor: &mut Cursor<R>, start_pos: Position) -> Result<Token, Error>
+    fn lex(&mut self, cursor: &mut Cursor<'_, R>, start_pos: Position) -> Result<Token, Error>
     where
         R: Read,
     {
@@ -183,7 +183,9 @@ impl<R> Tokenizer<R> for StringLiteral {
         }
 
         Ok(Token::new(
-            TokenKind::string_literal(String::from_utf16_lossy(buf.as_slice())),
+            TokenKind::StringLiteral(
+                cursor.get_interner_sym(String::from_utf16_lossy(buf.as_slice())),
+            ),
             Span::new(start_pos, cursor.pos()),
         ))
     }

@@ -60,7 +60,7 @@ where
 {
     type Output = Object;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("ObjectLiteral", "Parsing");
         let mut elements = Vec::new();
 
@@ -125,7 +125,7 @@ where
 {
     type Output = node::PropertyDefinition;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("PropertyDefinition", "Parsing");
 
         if cursor.next_if(Punctuator::Spread)?.is_some() {
@@ -201,7 +201,7 @@ where
 {
     type Output = node::PropertyDefinition;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("MethodDefinition", "Parsing");
 
         let (methodkind, prop_name, params) = match self.identifier.as_str() {
@@ -300,7 +300,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("Initializer", "Parsing");
 
         cursor.expect(Punctuator::Assign, "initializer")?;

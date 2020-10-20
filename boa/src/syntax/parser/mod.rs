@@ -9,10 +9,11 @@ mod statement;
 mod tests;
 
 pub use self::error::{ParseError, ParseResult};
-use crate::syntax::{ast::node::StatementList, lexer::TokenKind};
-
+use crate::{
+    syntax::{ast::node::StatementList, lexer::TokenKind},
+    Interner,
+};
 use cursor::Cursor;
-
 use std::io::Read;
 
 /// Trait implemented by parsers.
@@ -28,7 +29,7 @@ where
     /// Parses the token stream using the current parser.
     ///
     /// This method needs to be provided by the implementor type.
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError>;
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError>;
 }
 
 /// Boolean representing if the parser should allow a `yield` keyword.
@@ -82,17 +83,17 @@ impl From<bool> for AllowDefault {
 }
 
 #[derive(Debug)]
-pub struct Parser<R> {
+pub struct Parser<'p, R> {
     /// Cursor of the parser, pointing to the lexer and used to get tokens for the parser.
-    cursor: Cursor<R>,
+    cursor: Cursor<'p, R>,
 }
 
-impl<R> Parser<R> {
-    pub fn new(reader: R, strict_mode: bool) -> Self
+impl<'p, R> Parser<'p, R> {
+    pub fn new(reader: R, strict_mode: bool, interner: &'p Interner) -> Self
     where
         R: Read,
     {
-        let mut cursor = Cursor::new(reader);
+        let mut cursor = Cursor::new(reader, interner);
         cursor.set_strict_mode(strict_mode);
 
         Self { cursor }
@@ -121,7 +122,7 @@ where
 {
     type Output = StatementList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         match cursor.peek(0)? {
             Some(tok) => {
                 match tok.kind() {
@@ -154,7 +155,7 @@ where
 {
     type Output = StatementList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         self::statement::StatementList::new(false, false, false, false, true).parse(cursor)
     }
 }

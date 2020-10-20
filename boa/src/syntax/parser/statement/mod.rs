@@ -105,7 +105,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("Statement", "Parsing");
         // TODO: add BreakableStatement and divide Whiles, fors and so on to another place.
         let tok = cursor.peek(0)?.ok_or(ParseError::AbruptEnd)?;
@@ -258,7 +258,7 @@ impl StatementList {
     /// Note that the last token which causes the parse to finish is not consumed.
     pub(crate) fn parse_generalised<R>(
         self,
-        cursor: &mut Cursor<R>,
+        cursor: &mut Cursor<'_, R>,
         break_nodes: &[TokenKind],
     ) -> Result<node::StatementList, ParseError>
     where
@@ -301,7 +301,7 @@ where
 {
     type Output = node::StatementList;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("StatementList", "Parsing");
         let mut items = Vec::new();
 
@@ -384,7 +384,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("StatementListItem", "Parsing");
         let strict_mode = cursor.strict_mode();
         let tok = cursor.peek(0)?.ok_or(ParseError::AbruptEnd)?;
@@ -452,7 +452,7 @@ where
     type Output = Box<str>;
 
     /// Strict mode parsing as per https://tc39.es/ecma262/#sec-identifiers-static-semantics-early-errors.
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("BindingIdentifier", "Parsing");
 
         let next_token = cursor.next()?.ok_or(ParseError::AbruptEnd)?;

@@ -40,27 +40,30 @@ use self::{
     string::StringLiteral,
     template::TemplateLiteral,
 };
-use crate::syntax::ast::{Punctuator, Span};
 pub use crate::{profiler::BoaProfiler, syntax::ast::Position};
+use crate::{
+    syntax::ast::{Punctuator, Span},
+    Interner,
+};
 pub use error::Error;
 use std::io::Read;
 pub use token::{Token, TokenKind};
 
 trait Tokenizer<R> {
     /// Lexes the next token.
-    fn lex(&mut self, cursor: &mut Cursor<R>, start_pos: Position) -> Result<Token, Error>
+    fn lex(&mut self, cursor: &mut Cursor<'_, R>, start_pos: Position) -> Result<Token, Error>
     where
         R: Read;
 }
 
 /// Lexer or tokenizer for the Boa JavaScript Engine.
 #[derive(Debug)]
-pub struct Lexer<R> {
-    cursor: Cursor<R>,
+pub struct Lexer<'l, R> {
+    cursor: Cursor<'l, R>,
     goal_symbol: InputElement,
 }
 
-impl<R> Lexer<R> {
+impl<'l, R> Lexer<'l, R> {
     /// Checks if a character is whitespace as per ECMAScript standards.
     ///
     /// The Rust `char::is_whitespace` function and the ECMAScript standard use different sets of
@@ -102,12 +105,12 @@ impl<R> Lexer<R> {
 
     /// Creates a new lexer.
     #[inline]
-    pub fn new(reader: R) -> Self
+    pub fn new(reader: R, interner: &'l Interner) -> Self
     where
         R: Read,
     {
         Self {
-            cursor: Cursor::new(reader),
+            cursor: Cursor::new(reader, interner),
             goal_symbol: Default::default(),
         }
     }

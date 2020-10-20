@@ -2,9 +2,12 @@
 mod buffered_lexer;
 
 use super::ParseError;
-use crate::syntax::{
-    ast::Punctuator,
-    lexer::{InputElement, Lexer, Position, Token, TokenKind},
+use crate::{
+    syntax::{
+        ast::Punctuator,
+        lexer::{InputElement, Lexer, Position, Token, TokenKind},
+    },
+    Interner,
 };
 use buffered_lexer::BufferedLexer;
 use std::io::Read;
@@ -20,19 +23,19 @@ pub(super) enum SemicolonResult<'s> {
 ///
 /// This internal structure gives basic testable operations to the parser.
 #[derive(Debug)]
-pub(super) struct Cursor<R> {
-    buffered_lexer: BufferedLexer<R>,
+pub(super) struct Cursor<'c, R> {
+    buffered_lexer: BufferedLexer<'c, R>,
 }
 
-impl<R> Cursor<R>
+impl<'c, R> Cursor<'c, R>
 where
     R: Read,
 {
     /// Creates a new cursor with the given reader.
     #[inline]
-    pub(super) fn new(reader: R) -> Self {
+    pub(super) fn new(reader: R, interner: &'c Interner) -> Self {
         Self {
-            buffered_lexer: Lexer::new(reader).into(),
+            buffered_lexer: Lexer::new(reader, interner).into(),
         }
     }
 

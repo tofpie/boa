@@ -65,7 +65,7 @@ impl NumericKind {
 
 fn take_signed_integer<R>(
     buf: &mut String,
-    cursor: &mut Cursor<R>,
+    cursor: &mut Cursor<'_, R>,
     kind: &NumericKind,
 ) -> Result<(), Error>
 where
@@ -118,7 +118,7 @@ where
 ///  - [ECMAScript Specification][spec]
 ///
 /// [spec]: https://tc39.es/ecma262/#sec-literals-numeric-literals
-fn check_after_numeric_literal<R>(cursor: &mut Cursor<R>) -> Result<(), Error>
+fn check_after_numeric_literal<R>(cursor: &mut Cursor<'_, R>) -> Result<(), Error>
 where
     R: Read,
 {
@@ -134,7 +134,7 @@ where
 }
 
 impl<R> Tokenizer<R> for NumberLiteral {
-    fn lex(&mut self, cursor: &mut Cursor<R>, start_pos: Position) -> Result<Token, Error>
+    fn lex(&mut self, cursor: &mut Cursor<'_, R>, start_pos: Position) -> Result<Token, Error>
     where
         R: Read,
     {

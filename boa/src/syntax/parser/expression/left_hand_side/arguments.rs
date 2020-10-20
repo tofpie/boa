@@ -56,7 +56,7 @@ where
 {
     type Output = Box<[Node]>;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("Arguments", "Parsing");
 
         cursor.expect(Punctuator::OpenParen, "arguments")?;

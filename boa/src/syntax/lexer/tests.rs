@@ -1,17 +1,17 @@
 //! Tests for the lexer.
 #![allow(clippy::indexing_slicing)]
 
-use super::regex::RegExpFlags;
-use super::token::Numeric;
-use super::*;
-use super::{Error, Position};
-use crate::syntax::ast::Keyword;
+use super::{
+    regex::RegExpFlags, token::Numeric, Cursor, Error, Lexer, Position, Punctuator, Read, Span,
+    TokenKind,
+};
+use crate::{syntax::ast::Keyword, Interner};
 
 fn span(start: (u32, u32), end: (u32, u32)) -> Span {
     Span::new(Position::new(start.0, start.1), Position::new(end.0, end.1))
 }
 
-fn expect_tokens<R>(lexer: &mut Lexer<R>, expected: &[TokenKind])
+fn expect_tokens<R>(lexer: &mut Lexer<'_, R>, expected: &[TokenKind])
 where
     R: Read,
 {
@@ -28,7 +28,8 @@ where
 #[test]
 fn check_single_line_comment() {
     let s1 = "var \n//This is a comment\ntrue";
-    let mut lexer = Lexer::new(s1.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s1.as_bytes(), &interner);
 
     let expected = [
         TokenKind::Keyword(Keyword::Var),
@@ -43,12 +44,13 @@ fn check_single_line_comment() {
 #[test]
 fn check_multi_line_comment() {
     let s = "var /* await \n break \n*/ x";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     let expected = [
         TokenKind::Keyword(Keyword::Var),
         TokenKind::LineTerminator,
-        TokenKind::identifier("x"),
+        TokenKind::identifier("x", &mut interner),
     ];
 
     expect_tokens(&mut lexer, &expected);
@@ -57,11 +59,12 @@ fn check_multi_line_comment() {
 #[test]
 fn check_string() {
     let s = "'aaa' \"bbb\"";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     let expected = [
-        TokenKind::string_literal("aaa"),
-        TokenKind::string_literal("bbb"),
+        TokenKind::string_literal("aaa", &mut interner),
+        TokenKind::string_literal("bbb", &mut interner),
     ];
 
     expect_tokens(&mut lexer, &expected);
@@ -70,18 +73,20 @@ fn check_string() {
 #[test]
 fn check_template_literal_simple() {
     let s = "`I'm a template literal`";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     assert_eq!(
         lexer.next().unwrap().unwrap().kind(),
-        &TokenKind::template_literal("I'm a template literal")
+        &TokenKind::template_literal("I'm a template literal", &mut interner)
     );
 }
 
 #[test]
 fn check_template_literal_unterminated() {
     let s = "`I'm a template";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     lexer
         .next()
@@ -94,7 +99,8 @@ fn check_punctuators() {
     let s = "{ ( ) [ ] . ... ; , < > <= >= == != === !== \
              + - * % -- << >> >>> & | ^ ! ~ && || ? : \
              = += -= *= &= **= ++ ** <<= >>= >>>= &= |= ^= =>";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     let expected = [
         TokenKind::Punctuator(Punctuator::OpenBlock),
@@ -158,7 +164,8 @@ fn check_keywords() {
              do else export extends finally for function if import in instanceof \
              new return super switch this throw try typeof var void while with yield";
 
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     let expected = [
         TokenKind::Keyword(Keyword::Await),
@@ -203,13 +210,14 @@ fn check_keywords() {
 #[test]
 fn check_variable_definition_tokens() {
     let s = "let a = 'hello';";
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     let expected = [
         TokenKind::Keyword(Keyword::Let),
-        TokenKind::identifier("a"),
+        TokenKind::identifier("a", &mut interner),
         TokenKind::Punctuator(Punctuator::Assign),
-        TokenKind::string_literal("hello"),
+        TokenKind::string_literal("hello", &mut interner),
         TokenKind::Punctuator(Punctuator::Semicolon),
     ];
 
@@ -220,7 +228,8 @@ fn check_variable_definition_tokens() {
 fn check_positions() {
     let s = r#"console.log("hello world"); // Test"#;
     // --------123456789
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     // The first column is 1 (not zero indexed)
     assert_eq!(lexer.next().unwrap().unwrap().span(), span((1, 1), (1, 8)));
@@ -260,7 +269,8 @@ fn check_positions() {
 fn check_positions_codepoint() {
     let s = r#"console.log("hello world\u{{2764}}"); // Test"#;
     // --------123456789
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     // The first column is 1 (not zero indexed)
     assert_eq!(lexer.next().unwrap().unwrap().span(), span((1, 1), (1, 8)));
@@ -300,7 +310,8 @@ fn check_positions_codepoint() {
 fn check_line_numbers() {
     let s = "x\ny\n";
 
-    let mut lexer = Lexer::new(s.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(s.as_bytes(), &interner);
 
     assert_eq!(lexer.next().unwrap().unwrap().span(), span((1, 1), (1, 2)));
     assert_eq!(lexer.next().unwrap().unwrap().span(), span((1, 2), (2, 1)));
@@ -312,7 +323,8 @@ fn check_line_numbers() {
 #[test]
 fn check_decrement_advances_lexer_2_places() {
     // Here we want an example of decrementing an integer
-    let mut lexer = Lexer::new(&b"let a = b--;"[..]);
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(&b"let a = b--;"[..], &interner);
 
     for _ in 0..4 {
         lexer.next().unwrap();
@@ -333,7 +345,8 @@ fn check_decrement_advances_lexer_2_places() {
 
 #[test]
 fn single_int() {
-    let mut lexer = Lexer::new(&b"52"[..]);
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(&b"52"[..], &interner);
 
     let expected = [TokenKind::numeric_literal(52)];
 
@@ -342,9 +355,11 @@ fn single_int() {
 
 #[test]
 fn numbers() {
+    let mut interner = Interner::new();
     let mut lexer = Lexer::new(
         "1 2 0x34 056 7.89 42. 5e3 5e+3 5e-3 0b10 0O123 0999 1.0e1 1.0e-1 1.0E1 1E1 0.0 0.12 -32"
             .as_bytes(),
+        &interner,
     );
 
     let expected = [
@@ -375,7 +390,8 @@ fn numbers() {
 
 #[test]
 fn big_exp_numbers() {
-    let mut lexer = Lexer::new(&b"1.0e25 1.0e36 9.0e50"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1.0e25 1.0e36 9.0e50"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(10000000000000000000000000.0),
@@ -389,7 +405,8 @@ fn big_exp_numbers() {
 #[test]
 #[ignore]
 fn big_literal_numbers() {
-    let mut lexer = Lexer::new(&b"10000000000000000000000000"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"10000000000000000000000000"[..], &interner);
 
     let expected = [TokenKind::numeric_literal(10000000000000000000000000.0)];
 
@@ -398,7 +415,8 @@ fn big_literal_numbers() {
 
 #[test]
 fn implicit_octal_edge_case() {
-    let mut lexer = Lexer::new(&b"044.5 094.5"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"044.5 094.5"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(36),
@@ -412,12 +430,13 @@ fn implicit_octal_edge_case() {
 
 #[test]
 fn hexadecimal_edge_case() {
-    let mut lexer = Lexer::new(&b"0xffff.ff 0xffffff"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"0xffff.ff 0xffffff"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(0xffff),
         TokenKind::Punctuator(Punctuator::Dot),
-        TokenKind::identifier("ff"),
+        TokenKind::identifier("ff", &mut interner),
         TokenKind::numeric_literal(0x00ff_ffff),
     ];
 
@@ -426,7 +445,8 @@ fn hexadecimal_edge_case() {
 
 #[test]
 fn single_number_without_semicolon() {
-    let mut lexer = Lexer::new(&b"1"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1"[..], &interner);
     if let Some(x) = lexer.next().unwrap() {
         assert_eq!(x.kind(), &TokenKind::numeric_literal(Numeric::Integer(1)));
     } else {
@@ -436,7 +456,8 @@ fn single_number_without_semicolon() {
 
 #[test]
 fn number_followed_by_dot() {
-    let mut lexer = Lexer::new(&b"1.."[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1.."[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1),
@@ -448,11 +469,13 @@ fn number_followed_by_dot() {
 
 #[test]
 fn regex_literal() {
-    let mut lexer = Lexer::new(&b"/(?:)/"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"/(?:)/"[..], &interner);
 
     let expected = [TokenKind::regular_expression_literal(
         "(?:)",
         RegExpFlags::default(),
+        &mut interner,
     )];
 
     expect_tokens(&mut lexer, &expected);
@@ -460,7 +483,8 @@ fn regex_literal() {
 
 #[test]
 fn regex_literal_flags() {
-    let mut lexer = Lexer::new(&br"/\/[^\/]*\/*/gmi"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&br"/\/[^\/]*\/*/gmi"[..], &interner);
 
     let mut flags = RegExpFlags::default();
     flags.insert(RegExpFlags::GLOBAL);
@@ -470,6 +494,7 @@ fn regex_literal_flags() {
     let expected = [TokenKind::regular_expression_literal(
         "\\/[^\\/]*\\/*",
         flags,
+        &mut interner,
     )];
 
     expect_tokens(&mut lexer, &expected);
@@ -477,7 +502,8 @@ fn regex_literal_flags() {
 
 #[test]
 fn addition_no_spaces() {
-    let mut lexer = Lexer::new(&b"1+1"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1+1"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1),
@@ -490,7 +516,8 @@ fn addition_no_spaces() {
 
 #[test]
 fn addition_no_spaces_left_side() {
-    let mut lexer = Lexer::new(&b"1+ 1"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1+ 1"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1),
@@ -503,7 +530,8 @@ fn addition_no_spaces_left_side() {
 
 #[test]
 fn addition_no_spaces_right_side() {
-    let mut lexer = Lexer::new(&b"1 +1"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1 +1"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1),
@@ -516,7 +544,8 @@ fn addition_no_spaces_right_side() {
 
 #[test]
 fn addition_no_spaces_e_number_left_side() {
-    let mut lexer = Lexer::new(&b"1e2+ 1"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1e2+ 1"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(100),
@@ -529,7 +558,8 @@ fn addition_no_spaces_e_number_left_side() {
 
 #[test]
 fn addition_no_spaces_e_number_right_side() {
-    let mut lexer = Lexer::new(&b"1 +1e3"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1 +1e3"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1),
@@ -542,7 +572,8 @@ fn addition_no_spaces_e_number_right_side() {
 
 #[test]
 fn addition_no_spaces_e_number() {
-    let mut lexer = Lexer::new(&b"1e3+1e11"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"1e3+1e11"[..], &interner);
 
     let expected = [
         TokenKind::numeric_literal(1000),
@@ -555,7 +586,8 @@ fn addition_no_spaces_e_number() {
 
 #[test]
 fn take_while_pred_simple() {
-    let mut cur = Cursor::new(&b"abcdefghijk"[..]);
+    let interner = Interner::new();
+    let mut cur = Cursor::new(&b"abcdefghijk"[..], &interner);
 
     let mut buf: String = String::new();
 
@@ -567,7 +599,8 @@ fn take_while_pred_simple() {
 
 #[test]
 fn take_while_pred_immediate_stop() {
-    let mut cur = Cursor::new(&b"abcdefghijk"[..]);
+    let interner = Interner::new();
+    let mut cur = Cursor::new(&b"abcdefghijk"[..], &interner);
 
     let mut buf: String = String::new();
 
@@ -578,7 +611,8 @@ fn take_while_pred_immediate_stop() {
 
 #[test]
 fn take_while_pred_entire_str() {
-    let mut cur = Cursor::new(&b"abcdefghijk"[..]);
+    let interner = Interner::new();
+    let mut cur = Cursor::new(&b"abcdefghijk"[..], &interner);
 
     let mut buf: String = String::new();
 
@@ -594,7 +628,8 @@ fn illegal_following_numeric_literal() {
     // be immediately followed by an IdentifierStart or DecimalDigit.
 
     // Decimal Digit
-    let mut lexer = Lexer::new(&b"11.6n3"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"11.6n3"[..], &interner);
     let err = lexer
         .next()
         .expect_err("DecimalDigit following NumericLiteral not rejected as expected");
@@ -605,7 +640,8 @@ fn illegal_following_numeric_literal() {
     }
 
     // Identifier Start
-    let mut lexer = Lexer::new(&b"17.4$"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"17.4$"[..], &interner);
     if let Error::Syntax(_, pos) = lexer
         .next()
         .expect_err("IdentifierStart '$' following NumericLiteral not rejected as expected")
@@ -615,7 +651,8 @@ fn illegal_following_numeric_literal() {
         panic!("invalid error type");
     }
 
-    let mut lexer = Lexer::new(&b"17.4_"[..]);
+    let interner = Interner::new();
+    let mut lexer = Lexer::new(&b"17.4_"[..], &interner);
     if let Error::Syntax(_, pos) = lexer
         .next()
         .expect_err("IdentifierStart '_' following NumericLiteral not rejected as expected")
@@ -628,7 +665,8 @@ fn illegal_following_numeric_literal() {
 
 #[test]
 fn codepoint_with_no_braces() {
-    let mut lexer = Lexer::new(&br#""test\uD38Dtest""#[..]);
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(&br#""test\uD38Dtest""#[..], &interner);
     assert!(lexer.next().is_ok());
 }
 
@@ -637,7 +675,8 @@ fn codepoint_with_no_braces() {
 fn illegal_code_point_following_numeric_literal() {
     // Checks as per https://tc39.es/ecma262/#sec-literals-numeric-literals that a NumericLiteral cannot
     // be immediately followed by an IdentifierStart where the IdentifierStart
-    let mut lexer = Lexer::new(&br#"17.4\u{{2764}}"#[..]);
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(&br#"17.4\u{{2764}}"#[..], &interner);
     assert!(
         lexer.next().is_err(),
         "IdentifierStart \\u{{2764}} following NumericLiteral not rejected as expected"
@@ -647,11 +686,11 @@ fn illegal_code_point_following_numeric_literal() {
 #[test]
 fn non_english_str() {
     let str = r#"'中文';"#;
-
-    let mut lexer = Lexer::new(str.as_bytes());
+    let mut interner = Interner::new();
+    let mut lexer = Lexer::new(str.as_bytes(), &interner);
 
     let expected = [
-        TokenKind::StringLiteral("中文".into()),
+        TokenKind::string_literal("中文", &mut interner),
         TokenKind::Punctuator(Punctuator::Semicolon),
     ];
 
@@ -662,7 +701,8 @@ mod carriage_return {
     use super::*;
 
     fn expect_tokens_with_lines(lines: usize, src: &str) {
-        let mut lexer = Lexer::new(src.as_bytes());
+        let mut interner = Interner::new();
+        let mut lexer = Lexer::new(src.as_bytes(), &interner);
 
         let mut expected = Vec::with_capacity(lines + 2);
         expected.push(TokenKind::Punctuator(Punctuator::Sub));

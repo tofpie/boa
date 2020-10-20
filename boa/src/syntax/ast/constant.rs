@@ -7,7 +7,7 @@
 //! [spec]: https://tc39.es/ecma262/#sec-primary-expression-literals
 //! [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types#Literals
 
-use crate::builtins::bigint::BigInt;
+use crate::{builtins::bigint::BigInt, Sym};
 use gc::{Finalize, Trace};
 use std::fmt::{Display, Formatter, Result};
 
@@ -40,7 +40,7 @@ pub enum Const {
     ///
     /// [spec]: https://tc39.es/ecma262/#sec-terms-and-definitions-string-value
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types#String_literals
-    String(Box<str>),
+    String(Sym),
 
     /// A floating-point number literal.
     ///
@@ -111,30 +111,6 @@ pub enum Const {
     /// [spec]: https://tc39.es/ecma262/#sec-undefined
     /// [mdn]: https://developer.mozilla.org/en-US/docs/Glossary/undefined
     Undefined,
-}
-
-impl From<&str> for Const {
-    fn from(s: &str) -> Self {
-        Self::String(s.to_owned().into_boxed_str())
-    }
-}
-
-impl From<&String> for Const {
-    fn from(s: &String) -> Self {
-        Self::String(s.clone().into_boxed_str())
-    }
-}
-
-impl From<Box<str>> for Const {
-    fn from(s: Box<str>) -> Self {
-        Self::String(s)
-    }
-}
-
-impl From<String> for Const {
-    fn from(s: String) -> Self {
-        Self::String(s.into_boxed_str())
-    }
 }
 
 impl From<f64> for Const {

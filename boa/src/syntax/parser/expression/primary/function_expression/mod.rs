@@ -42,7 +42,7 @@ where
 {
     type Output = FunctionExpr;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         let _timer = BoaProfiler::global().start_event("FunctionExpression", "Parsing");
 
         let name = if let Some(token) = cursor.peek(0)? {

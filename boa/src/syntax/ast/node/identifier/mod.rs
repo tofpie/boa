@@ -1,6 +1,6 @@
 //! Local identifier node.
 
-use crate::{exec::Executable, syntax::ast::node::Node, Context, Result, Value};
+use crate::{exec::Executable, syntax::ast::node::Node, Context, Interner, Result, Sym, Value};
 use gc::{Finalize, Trace};
 use std::fmt;
 
@@ -27,7 +27,29 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", serde(transparent))]
 #[derive(Clone, Debug, Trace, Finalize, PartialEq)]
 pub struct Identifier {
-    ident: Box<str>,
+    ident: Sym,
+}
+
+impl Identifier {
+    /// Creates a new `Identifier` AST node.
+    fn new(ident: Sym) -> Self {
+        Self { ident }
+    }
+
+    /// Creates a structure that can be used to display an `Identifier` AST node.
+    pub fn display<'d>(&self, interner: &'d Interner) -> IdentifierDisplay<'d> {
+        IdentifierDisplay {
+            ident: self.ident,
+            interner,
+        }
+    }
+}
+
+/// Structure to display an `Identifier` AST node.
+#[derive(Debug)]
+struct IdentifierDisplay<'i> {
+    ident: Sym,
+    interner: &'i Interner,
 }
 
 impl Executable for Identifier {
@@ -35,29 +57,14 @@ impl Executable for Identifier {
         interpreter
             .realm()
             .environment
-            .get_binding_value(self.as_ref())
+            .get_binding_value(interpreter.resolve(self.ident).expect("string disappeared"))
             .ok_or_else(|| interpreter.construct_reference_error(self.as_ref()))
     }
 }
 
-impl fmt::Display for Identifier {
+impl fmt::Display for IdentifierDisplay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.ident, f)
-    }
-}
-
-impl AsRef<str> for Identifier {
-    fn as_ref(&self) -> &str {
-        &self.ident
-    }
-}
-
-impl<T> From<T> for Identifier
-where
-    T: Into<Box<str>>,
-{
-    fn from(stm: T) -> Self {
-        Self { ident: stm.into() }
+        fmt::Display::fmt(interner.resolve(self.ident).expect("string disappeared"), f)
     }
 }
 

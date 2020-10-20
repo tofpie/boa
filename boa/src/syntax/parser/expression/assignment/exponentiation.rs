@@ -55,7 +55,7 @@ impl ExponentiationExpression {
 }
 
 /// Checks by looking at the next token to see whether it's a unary operator or not.
-fn is_unary_expression<R>(cursor: &mut Cursor<R>) -> Result<bool, ParseError>
+fn is_unary_expression<R>(cursor: &mut Cursor<'_, R>) -> Result<bool, ParseError>
 where
     R: Read,
 {
@@ -81,7 +81,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("ExponentiationExpression", "Parsing");
 
         if is_unary_expression(cursor)? {

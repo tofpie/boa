@@ -62,7 +62,7 @@ where
 {
     type Output = Node;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> ParseResult {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> ParseResult {
         let _timer = BoaProfiler::global().start_event("ConditionalExpression", "Parsing");
 
         // TODO: coalesce expression

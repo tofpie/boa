@@ -48,7 +48,7 @@ where
 {
     type Output = AsyncFunctionDecl;
 
-    fn parse(self, cursor: &mut Cursor<R>) -> Result<Self::Output, ParseError> {
+    fn parse(self, cursor: &mut Cursor<'_, R>) -> Result<Self::Output, ParseError> {
         cursor.expect(Keyword::Async, "async function declaration")?;
         cursor.peek_expect_no_lineterminator(0, "async function declaration")?;
         cursor.expect(Keyword::Function, "async function declaration")?;
