@@ -1,9 +1,14 @@
 use super::SuiteResult;
+use crate::TestOutcomeResult::{Failed, Ignored, Panic, Passed};
+use crate::{TestOutcomeResult, TestResult};
+use bitflags::_core::fmt::Formatter;
+use colored::Colorize;
 use git2::Repository;
 use hex::ToHex;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use std::{
-    env, fs,
+    env, fmt, fs,
     io::{self, BufReader, BufWriter},
     path::Path,
 };
@@ -167,7 +172,7 @@ fn update_gh_pages_repo(path: &Path, verbose: u8) {
 }
 
 /// Compares the results of two test suite runs.
-pub(crate) fn compare_results(base: &Path, new: &Path, markdown: bool) {
+pub(crate) fn compare_results(base: &Path, new: &Path, markdown: bool, detailed: bool) {
     let base_results: ResultInfo = serde_json::from_reader(BufReader::new(
         fs::File::open(base).expect("could not open the base results file"),
     ))
@@ -296,5 +301,109 @@ pub(crate) fn compare_results(base: &Path, new: &Path, markdown: bool) {
             new_panics,
             base_panics - new_panics
         );
+    }
+    if detailed {
+        let mut report = DetailedReport::default();
+        report.compare(&base_results.results, &new_results.results, "");
+        report.report();
+    }
+}
+
+#[derive(Default)]
+struct DetailedReport {
+    new_passed: Vec<String>,
+    new_failed: Vec<String>,
+    new_panic: Vec<String>,
+}
+
+impl Display for TestOutcomeResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Passed => "passed",
+            Failed => "failed",
+            Panic => "panic",
+            Ignored => "ignored",
+        })
+    }
+}
+
+impl DetailedReport {
+    fn compare(
+        &mut self,
+        base_results: &SuiteResult,
+        new_results: &SuiteResult,
+        path: &str,
+    ) {
+        let path = format!("{}/{}", path, new_results.name);
+        for new_test in new_results.tests.iter() {
+            if let Some(base_test) = base_results
+                .tests
+                .iter()
+                .find(|t| t.name == new_test.name && t.strict == new_test.strict)
+            {
+                self.compare_test(
+                    base_test,
+                    new_test,
+                    &path,
+                );
+            }
+        }
+
+        for new_suite in new_results.suites.iter() {
+            if let Some(base_suite) = base_results
+                .suites
+                .iter()
+                .find(|s| s.name == new_suite.name)
+            {
+                self.compare(
+                    base_suite,
+                    new_suite,
+                    &path,
+                );
+            }
+        }
+    }
+
+    fn compare_test(&mut self, base_test: &TestResult, new_test: &TestResult, path: &str) {
+        if new_test.result != base_test.result {
+            let result = format!(
+                "{}/{} ({}) (previous result: {})",
+                path,
+                new_test.name,
+                if base_test.strict {
+                    "strict"
+                } else {
+                    "non strict"
+                },
+                base_test.result
+            );
+            match new_test.result {
+                Passed => self.new_passed.push(result),
+                Failed => self.new_failed.push(result),
+                Panic => self.new_panic.push(result),
+                _ => (),
+            }
+        }
+    }
+
+    fn report(&self) {
+        println!("{} new passed tests", self.new_passed.len());
+        for passed in self.new_passed.iter() {
+            println!("{}", passed.green());
+        }
+
+        println!();
+
+        println!("{} new failed tests", self.new_failed.len());
+        for passed in self.new_failed.iter() {
+            println!("{}", passed.red());
+        }
+
+        println!();
+
+        println!("{} new panic tests", self.new_panic.len());
+        for passed in self.new_panic.iter() {
+            println!("{}", passed.red());
+        }
     }
 }

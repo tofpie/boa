@@ -193,6 +193,10 @@ enum Cli {
         /// Whether to use markdown output
         #[structopt(short, long)]
         markdown: bool,
+
+        /// Print detailed report
+        #[structopt(short, long)]
+        detailed: bool,
     },
 }
 
@@ -216,7 +220,8 @@ fn main() {
             base,
             new,
             markdown,
-        } => compare_results(base.as_path(), new.as_path(), markdown),
+            detailed,
+        } => compare_results(base.as_path(), new.as_path(), markdown, detailed),
     }
 }
 
